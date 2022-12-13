@@ -1,0 +1,59 @@
+"""
+    Copyright 2018 Google LLC
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+        https://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+"""
+
+Import('hwenv')
+Import('native_env')
+
+def demos_obj(env, src, lib_suffix=None):
+    suffix = None
+
+    srcname = src
+    if (hasattr(src, 'get_abspath')):
+        srcname = src.get_abspath()
+
+    if srcname.endswith('.c'):
+        suffix = '.c'
+    if srcname.endswith('.cpp'):
+        suffix = '.cpp'
+
+    target = srcname.replace(suffix, '.o')
+    if lib_suffix:
+      target = srcname.replace(suffix, '_%s.o' % lib_suffix)
+    return env.Object(target=target, source=srcname)
+
+chip_sources = hwenv.Glob('chip-%s/*.c' % hwenv['CHIP'].lower())
+chip_sources += hwenv.Glob('chip-%s/*.cpp' % hwenv['CHIP'].lower())
+
+driver_sources = hwenv.Glob('driver/*.cpp')
+
+sources = Split(
+        'nvic.c '
+        'os_startup.c '
+        'syscontrol.c '
+        'pinctrl.cpp '
+        'core/thread.cpp '
+        'core/init.cpp '
+        ) + chip_sources + driver_sources
+
+fw_sources = Split('cpp_rt.c cpp_alloc.cpp')
+
+native_objects = [demos_obj(native_env, s, lib_suffix='native') for s in sources]
+native_env.StaticLibrary(target='demos_native', source=native_objects)
+
+if GetOption('build_firmware'):
+  objects = [demos_obj(hwenv, s) for s in sources + fw_sources]
+  demos_lib = hwenv.StaticLibrary(target='demos', source=objects)
+  Return('demos_lib')

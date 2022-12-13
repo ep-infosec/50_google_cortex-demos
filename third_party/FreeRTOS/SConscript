@@ -1,0 +1,58 @@
+"""
+    Copyright 2018 Google LLC
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+        https://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+"""
+
+import os.path
+
+def my_sources(base, port, mem_mang=None):
+    core_src_names = [
+        'croutine.c',
+        'event_groups.c',
+        'list.c',
+        'queue.c',
+        'stream_buffer.c',
+        'tasks.c',
+        'timers.c',
+        'idle_task_memory.cpp',
+        ]
+
+    core_srcs = [os.path.join(base, 'Source', f) for f in core_src_names]
+
+    port_path = os.path.join(base, 'Source', 'portable', 'GCC', port)
+    port_candidates = ['port.c']
+    for src in port_candidates:
+        src_path = os.path.join(port_path, src)
+        core_srcs.append(src_path)
+
+    if mem_mang is not None:
+        core_srcs.append(os.path.join(base, 'Source', 'portable', 'MemMang', 'heap_%s.c' % mem_mang))
+        core_srcs.append(os.path.join(base, 'Source', 'portable', 'MemMang', 'heap.cpp'))
+
+    return core_srcs
+
+
+Import('env')
+Import('port')
+Import('mem_mang')
+
+freertos_env = env.Clone()
+freertos_env.AppendUnique(CPPPATH=[
+            os.path.join('.', 'Source', 'include'),
+            os.path.join('.', 'Source', 'portable', 'GCC', port)
+    ])
+
+libfreertos = freertos_env.StaticLibrary(my_sources('.', port, mem_mang))
+
+Return('libfreertos')
